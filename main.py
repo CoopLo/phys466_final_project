@@ -51,4 +51,6 @@ if __name__ == '__main__':
     lattice = initialize_lattice(num_atoms, beta)
 
     pass
+def new_func():
+    return
 
