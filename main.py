@@ -32,7 +32,6 @@ def energy(lattice):
 #    lattice: the lattice we're working with
 #    site: the site on the lattice being changed
 #    e_coord: the energy coordinate being changed e.g. (0,0,1) for z, or (1,0,0) for x
-#    pm: energy +- 1
 #
 # returns:
 #    Difference in energy from changing specifiec site
