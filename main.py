@@ -53,4 +53,8 @@ if __name__ == '__main__':
     lattice = initialize_lattice(num_atoms, beta)
 
     pass
+<<<<<<< HEAD
+=======
+
+>>>>>>> f33e2ac83c637736bab553c818dcf4504af7feb9
 
