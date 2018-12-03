@@ -31,14 +31,17 @@ def energy(lattice):
 # parameters:
 #    lattice: the lattice we're working with
 #    site: the site on the lattice being changed
-#    e_coord: the energy coordinate being changed
+#    e_coord: the energy coordinate being changed e.g. (0,0,1) for z, or (1,0,0) for x
 #    pm: energy +- 1
 #
 # returns:
 #    Difference in energy from changing specifiec site
 ###
-def energy_diff(lattice, site, e_coord, pm):
-    return 1/2 * (((lattice[site]))**2 - (np.sum(lattice[site] + pm))**2)
+def energy_diff(lattice, site, e_coord):
+    old_en = np.sum(np.square(lattice[site]))
+    new_en = np.sum(np.square(lattice[site]+e_coord))
+    return old_en - new_en
+
 
 if __name__ == '__main__':
 
@@ -51,6 +54,4 @@ if __name__ == '__main__':
     lattice = initialize_lattice(num_atoms, beta)
 
     pass
-def new_func():
-    return
 
