@@ -14,7 +14,7 @@ def initialize_lattice(num_atoms, beta, lim):
     lat = np.random.rand(nx, nx, nx)
     prob = []
     for i in range(lim):
-        compare = 1 / (1 - np.exp(-beta * (i+0.5)))
+        compare = 1 / (np.exp(beta * (i+0.5))-1)
         prob.append(compare)
     prob = np.cumsum(prob/np.sum(prob))
     sel = lat < prob[0]
