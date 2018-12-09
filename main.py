@@ -8,8 +8,8 @@ def initialize_lattice(num_atoms, beta, lim):
             beta: temperature parameter, hbar * omega / T
             lim: highest energy state occupied
         returns:
-               lattice: (num_atoms/3, num_atoms/3, num_atoms/3, 3) array with energy levels distributed according to BE distribution'''
-    nx = int(num_atoms/3)
+               lattice: (num_atoms**1/3, num_atoms**1/3, num_atoms**1/3, 3) array with energy levels distributed according to BE distribution'''
+    nx = int(num_atoms ** 1/3)
     lattice = np.ones([nx, nx, nx, 3], dtype=float)
     lat = np.random.rand(nx, nx, nx)
     prob = []
