@@ -2,29 +2,33 @@ import numpy as np
 import scipy
 from matplotlib import pyplot as plt
 
-
-###
-# parameters:
-#    num_atoms: number of atoms we're simulating with. Should be cubic number
-#    beta: temperature parameter, 1/T
-#
-# returns:
-#    lattice with energy on sites distributed according to BE distribution
-###
-def initialize_lattice(num_atoms, beta):
-    lattice = np.empty(num_atoms)
-
-    # Initialize each site with energy such that average
-    # is given temperature
-    
-    
-    # Take into account energy levels and degeneracy for this?
+def initialize_lattice(num_atoms, beta, lim):
+    ''' parameters:
+            num_atoms: number of atoms we're simulating with. Should be cubic number.
+            beta: temperature parameter, hbar * omega / T
+            lim: highest energy state occupied
+        returns:
+               lattice: (num_atoms/3, num_atoms/3, num_atoms/3, 3) array with energy levels distributed according to BE distribution'''
+    nx = int(num_atoms/3)
+    lattice = np.ones([nx, nx, nx, 3], dtype=float)
+    lat = np.random.rand(nx, nx, nx)
+    prob = []
+    for i in range(lim):
+        compare = 1 / (1 - np.exp(-beta * (i+0.5)))
+        prob.append(compare)
+    prob = np.cumsum(prob/np.sum(prob))
+    sel = lat < prob[0]
+    lattice[sel] = 0
+    for i in range(lim - 1):
+        sel = (lat < prob[i+1]) & (lat > prob[i])
+        lattice[sel] = i
     return lattice
 
 
-# total energy of lattice
 def energy(lattice):
-    pass
+   ''' parameters:
+   '''
+    
 
 
 ###
