@@ -52,11 +52,11 @@ def energy_diff(lattice, site, e_coord):
 if __name__ == '__main__':
 
     # Initial conditions in reduced units
-    beta = 1.
+    beta = 0.25
     mass = 48.
     lim = 10
-    num_atoms = 100
-    nsweep = 1000
+    num_atoms = 64
+    nsweep = 100
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     # Initialize the lattice at specified temperature
     lattice = initialize_lattice(num_atoms, beta, lim)
-    
+    nx = int(num_atoms**1/3)
     restart = False
     if restart:
         lat = np.loadtxt('last_lat.dat')
@@ -78,8 +78,20 @@ if __name__ == '__main__':
             fsca.write(therm_header)
     flat = open(lat_dat, 'a')
     fsca = open(scalar_dat, 'a')
-    
-    msg = 'starting %s sweeps with %d 
-    if restart:
-           msg = 're'+msg
 
+    msg = 'starting %s sweeps using temperature %s and number of particles %s' % (nsweep, beta, num_atoms)
+    if restart:
+        msg = 're'+msg
+    #etot = np.sum(energy(lattice))   #needs more work
+    from time import clock
+    start = clock()
+    print(msg)
+    print(np.shape(lattice))
+    naccept = 0
+    nattempt = 0
+    for isweep in range(nsweep):
+        if (isweep % ntherm == 0):
+            #energy(lattice) ** 2        # calculation of specific heat
+            # calculation of ground state occupancy
+            # calculation of total energy
+            pass
