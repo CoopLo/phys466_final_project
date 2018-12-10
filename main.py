@@ -91,5 +91,7 @@ if __name__ == '__main__':
         if (isweep % ntherm == 0):
             #energy(lattice) ** 2        # calculation of specific heat
             # calculation of ground state occupancy
+            gsoccupancy = sum(np.shape(~lattice.any(axis=3))) / natoms     # generates array of Booleans (True if it exists in ground state, False otherwise) and sums for ground state occupancy
+            
             # calculation of total energy
             pass
