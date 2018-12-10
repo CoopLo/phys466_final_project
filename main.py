@@ -13,19 +13,17 @@ def initialize_lattice(num_atoms, beta, lim):
       '''
     
     nx = int(round(num_atoms ** 1/3))
-    lattice = np.ones([nx, nx, nx, 3], dtype=float)
-    lat = np.random.rand(nx, nx, nx)
+    lattice = np.zeros([nx, nx, nx, 3], dtype=float)
+    lat = np.random.rand(nx, nx, nx, 3)                            # generates (nx, nx, nx, 3) array of random integers
     prob = []
     for i in range(lim):
-        compare = 1 / (np.exp(beta * (i+0.5))-1)
+        compare = 1 / (np.exp(beta * (i+0.5))-1)                   # calculates probability of being in energy level i
         prob.append(compare)
-    prob = np.cumsum(prob/np.sum(prob))
-    sel = lat < prob[0]
-    lattice[sel] = 0
-    for i in range(lim - 1):
+    prob = np.cumsum(prob/np.sum(prob))                            # calculates cumulative probability for energy levels
+    for i in range(lim - 1):                                       # places lattice sites in higher energy levels given probabilities
         sel = (lat < prob[i+1]) & (lat > prob[i])
         lattice[sel] = i
-    return lattice
+    return lattice                                                 # returns (nx, nx, nx, 3) array of energy levels 
 
 
 def energy(lattice):
