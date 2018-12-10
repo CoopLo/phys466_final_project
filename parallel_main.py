@@ -6,34 +6,9 @@ from matplotlib import pyplot as plt
 from multiprocessing import Pool
 
 
-def initialize_lattice(num_atoms, beta, lim):
-    ''' oparameters:
-            num_atoms: number of atoms we're simulating with. Should be cubic number.
-            beta: temperature parameter, hbar * omega / T
-            lim: highest energy state occupied
-        returns:
-               lattice: (num_atoms**1/3, num_atoms**1/3, num_atoms**1/3, 3) array with energy levels distributed according to BE distribution
-      NOTE: Assumes energy levels of each particle same as that of quantum harmonic oscillator hbar * omega (n + 1/2)         
-      '''
-    
-    nx = int(round(num_atoms ** 1/3))
-    lattice = np.zeros([nx, nx, nx, 3], dtype=float)
-    lat = np.random.rand(nx, nx, nx, 3)   # generates (nx, nx, nx, 3) array of random integers
-    prob = []
-    for i in range(lim):
-        compare = 1 / (np.exp(beta * (i+0.5))-1) # calculates probability of being in energy level i
-        prob.append(compare)
-    prob = np.cumsum(prob/np.sum(prob))    # calculates cumulative probability for energy levels
-    for i in range(lim - 1):   # places lattice sites in higher energy levels given probabilities
-        sel = (lat < prob[i+1]) & (lat > prob[i])
-        lattice[sel] = i
-    return lattice          # returns (nx, nx, nx, 3) array of energy levels 
-
-
 # Initialize lattice by samlping bose-einstein distribution
 # In chemical potential = 0 limit?
 def be_lattice(size, beta):
-    
     lattice = np.zeros((size, size, size, 3))
     # inverse bose-einstein distribution
 
@@ -62,7 +37,6 @@ def be_lattice(size, beta):
     return np.array(lattice)
 
 
-
 def get_energy(lattice, mass):
    ''' 
        parameters:
@@ -89,90 +63,84 @@ def energy_diff(lattice, site, e_coord):
 
 #def mc(nsweeps, betas, i, idx):
 def mc(size):
-    betas = np.array([1000., 100., 50., 40., 30., 20., 10.,
+
+    # Temperatures over which to simulate
+    betas = np.array([50., 40., 30., 20., 10.,
                       5., 4., 3., 2., 1., 0.5, 0.25, 0.1])
-    nsweeps = [10000, 20000, 20000, 50000, 100000]#, 100000, 3000000]
+
+    # Number of sweeps varies for each system size
+    nsweeps = [10000, 20000, 20000, 50000, 100000, 100000, 5000000]
+
+    # Fraction of data to throw out for equilibrium
     eq_frac = [0.4, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5]
 
+    # Sizes of system, used here for index
     sizes = [2, 3, 4, 5, 7, 10, 22]
     i = sizes.index(size)
 
+    # Because I guess I use this somewhere else
     mass = 48
 
-    energy = []
-    gs_occ = []
     runs = 20
-    print("Starting simulation for {} particles".format(size**3))
     nsweep = nsweeps[i]
     num_atoms = size**3
-    av_en = np.zeros((len(betas), runs))
-    av_gs_occ = np.zeros((len(betas), runs))
 
-    for t in range(runs):
-        for idx, beta in enumerate(betas):
+    # Do for each temperature
+    for idx, beta in enumerate(betas):
+        av_en = np.zeros((len(betas), runs))
+        av_gs_occ = np.zeros((len(betas), runs))
+
+        # More than one run so we can average later
+        for t in range(runs):
             lattice = be_lattice(size, betas[idx])
+            energy = []
+            gs_occ = []
 
-            #msg = 'starting %s sweeps using temperature %s and number of particles %s' % \
-            #(nsweep, beta, num_atoms)
-            #print(msg)
-
+            # Number of sweeps
             for isweep in range(nsweeps[i]):
 
-                # Select site to change, coordinate, and up or down
-                site = np.random.randint(0, size, (1, 3))[0]
-                coord = np.random.randint(0, 3)
-                e_coord = [1,0,0] if coord==0 else [0,1,0] if coord==1 else [0,0,1] 
-                change = np.random.randint(0, 2)
-                change = -1 if change==0 else 1
+                # Each sweep could change every spin
+                for k in range(num_atoms):
 
-                # change in energy from site change
-                delta_e = energy_diff(lattice, site, np.array(e_coord)*change)
-                
-                # transition probability
-                prob = 1/2 * 1./np.cosh(delta_e*beta/2) * np.exp(change*delta_e*beta/2)
-                if(prob > np.random.random()):
-                    #print("TRANSITIONING")
-                    #print(prob)
-                    lattice[site[0]][site[1]][site[2]][coord] += change
+                    # Select site to change, coordinate, and up or down
+                    site = np.random.randint(0, size, (1, 3))[0]
+                    coord = np.random.randint(0, 3)
+                    e_coord = [1,0,0] if coord==0 else [0,1,0] if coord==1 else [0,0,1] 
+                    change = np.random.randint(0, 2)
+                    change = -1 if change==0 else 1
 
-                # calculation of ground state occupancy
-                #gsoccupancy = sum(np.shape(~lattice.any(axis=3))) / num_atoms    
-                gsoccupancy = np.count_nonzero(np.sum(lattice, axis=3)==0)
-                gs_occ.append(gsoccupancy/num_atoms)
-                # generates array of Booleans (True if it exists in ground state,
-                # False otherwise)
-                # and sums for ground state occupancy
-                
-                # calculation of total energy
-                energy.append(get_energy(lattice, mass))
-                #print(lattice)
-            #print(energy)
-            #fig, ax = plt.subplots(2)
-            #ax[0].plot(energy)
-            #ax[1].plot(gs_occ)
-            #plt.show()
-            #exit(1)
+                    # change in energy from site change
+                    delta_e = energy_diff(lattice, site, np.array(e_coord)*change)
+                    
+                    # transition probability
+                    prob = 1/2 * 1./np.cosh(delta_e*beta/2) * np.exp(change*delta_e*beta/2)
 
+                    # Transition if you should
+                    if(prob > np.random.random()):
+                        lattice[site[0]][site[1]][site[2]][coord] += change
+
+                    # calculation of ground state occupancy
+                    gs_occ.append(gsoccupancy/num_atoms)
+                    
+                    # calculation of total energy
+                    energy.append(get_energy(lattice, mass))
+
+            # Average energy and gs occupancy for temperature
             av_en[idx][t] = np.average(energy[int(eq_frac[i]*nsweeps[i]):])
             av_gs_occ[idx][t] = np.average(gs_occ[int(eq_frac[i]*nsweeps[i]):])
             
-            #print("DONE: {}".format(msg))
+        # Averageing and making plot
         fig, ax = plt.subplots()
         av_en = np.average(av_en, axis=1)
         av_gs_occ = np.average(av_gs_occ, axis=1)
         ax.plot(1/betas, av_gs_occ)
         plt.savefig("./graphs/{}_parallel.png".format(size))
-    print("Done with simulation for {} particles".format(size**3))
 
 
 if __name__ == '__main__':
 
     # Size of simulation
-    sizes = [2, 3, 4, 5, 7]#, 10, 22]
-    #sizes = [22]
+    sizes = [2, 3, 4, 5, 7, 10, 22]
     with Pool(len(sizes)) as p:
         print(p.map(mc, sizes))
                 
-
-        
-
