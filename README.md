@@ -5,5 +5,6 @@ https://ac.els-cdn.com/S0010465599004129/1-s2.0-S0010465599004129-main.pdf?_tid=
 
 
 he4 using quantum monte carlo (variational?)
-http://adsabs.harvard.edu/abs/1965PhRv..138..442M
+
+https://journals-aps-org.proxy2.library.illinois.edu/pr/pdf/10.1103/PhysRev.138.A442
 
