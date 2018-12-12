@@ -1,0 +1,330 @@
+#!/usr/bin/env python
+import numpy as np
+import random
+
+# ===================================================== #
+# ======= functions you have to implement begin ======= #
+def total_mag(lat):
+  """ Total magnetization of lattice.
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+  Return:
+    int: total magnetization
+  """
+  return np.sum(lat)
+
+
+def neighbor_list(i, j, nx):
+  """ Find all neighbors of site (i, j).
+
+  Args:
+    i (int): site index along x
+    j (int): site index along y
+    nx (int): number of sites along each dimension
+  Return:
+    list: a list of 2-tuples, [(i_left, j_left), (i_top, j_top),
+     (i_right, j_right), (i_bottom, j_bottom)]
+  """
+  left   = (i-1, j)
+  right  = (i+1, j)
+  top    = (i, j+1)
+  bottom = (i, j-1)
+  return np.mod([left, top, right, bottom], nx)
+
+def energy_site(i, j, lat):
+  """ Calculate energy associated with site (i, j)
+
+  The sum of energy_site over all sites should be 2* total energy.
+
+  Args:
+    i (int): site index along x
+    j (int): site index along y
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+  Return:
+    float: energy related to site (i, j)
+  """
+  nx = lat.shape[0]
+  neighbors = neighbor_list(i, j, nx)
+  n = []
+  x = np.ravel_multi_index((i, j), (nx, nx))
+  for i in range(4):
+      n.append(np.ravel_multi_index(neighbors[i], (nx, nx)))
+  lat = lat.flatten(order='c')
+  return np.sum(lat[n]) * lat[x]
+
+def spin_flip_random(lat, i, j, betaj):
+  """ Calculate spin flip probability and change to total magnetization.
+
+  Method: randomly flip spin (i, j)
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+    i (int): site index along x
+    j (int): site index along y
+    betaj (float): inverse temperature in reduced units
+  Return:
+    (float, int): (A, dmtot). A is acceptance ratio. dmtot is change to
+     total magnetization due to the spin flip.
+  """
+  # !!!!!!!!!!!!! complete this function !!!!!!!!!!!!!
+  A = np.exp(- betaj * 2 * energy_site(i, j, lat))
+  temp = np.copy(lat)
+  temp[i, j] = temp[i, j ] * -1
+  dmtot = np.sum(temp) - np.sum(lat)
+  return A, dmtot
+
+def mc_sweep_random(lat, betaj):
+  """ Perform one Monte Carlo sweep using random spin flips.
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+    betaj (float): inverse temperature in reduced units
+  Return:
+    (int, int, int): (nattempt, naccept, dmtot). nattempt is the
+     number of attempted moves. naccept is the number of accepted
+     moves. dmtot is the change in total magnetization due to all
+     accepted moves.
+  """
+  nx = lat.shape[0]
+  nspin = nx**2
+  naccept = 0
+  nattempt = 0
+  dmtot = 0
+  for ispin in range(nspin):
+    # select random spin
+    ind = np.random.randint(0, nx**2)
+    i, j = np.unravel_index(ind, (nx, nx))
+    # !!!!!!!!!!!!! complete this function !!!!!!!!!!!!!
+
+    # flip
+    nattempt += 1
+    prob, dm = spin_flip_random(lat, i, j, betaj)
+    rand = np.random.random()
+    if rand < prob:
+      lat[i, j] = -lat[i, j]
+      naccept += 1
+      dmtot = dmtot + dm
+    # accept or reject
+
+  return nattempt, naccept, dmtot
+
+def spin_heatbath(lat, i, j, betaj):
+  """ sample spin for site (i, j) using heat-bath algorithm
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+    i (int): site index along x
+    j (int): site index along y
+    betaj (float): inverse temperature in reduced units
+  Return:
+    (int, int): (s, dmtot), (sampled spin, change to total magnetization)
+  """
+  # !!!!!!!!!!!!! complete this function !!!!!!!!!!!!!
+  temp = np.copy(lat)
+  temp[i, j] = temp[i, j] * -1
+  if lat[i, j] > 0:
+      pup = np.exp(betaj * energy_site(i, j, lat))
+      pdown = np.exp(betaj * energy_site(i, j, temp))
+  else:
+      pup = np.exp(betaj * energy_site(i, j, temp))
+      pdown = np.exp(betaj * energy_site(i, j, lat))
+  act = pup / (pup + pdown)
+  s = -1
+  temp[i, j] = -1
+  dmtot = np.sum(temp - lat)
+  if np.random.random() < act:
+      s = 1
+      temp[i, j] = 1
+      dmtot = np.sum(temp - lat)
+  return s, dmtot
+
+def mc_sweep_heatbath(lat, betaj):
+  """ Perform one Monte Carlo sweep using heat-bath moves.
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+    betaj (float): inverse temperature in reduced units
+  Return:
+    (int, int, int): (nattempt, naccept, dmtot). nattempt is the
+     number of attempted moves. naccept is the number of accepted
+     moves. dmtot is the change in total magnetization due to all
+     accepted moves.
+  """
+  nx = lat.shape[0]
+  nspin = nx**2
+  naccept = 0
+  nattempt = 0
+  dmtot = 0
+  for ispin in range(nspin):
+    # select random spin
+    ind = np.random.randint(0, nx**2)
+    i, j = np.unravel_index(ind, (nx, nx))
+    s, dm = spin_heatbath(lat, i, j, betaj)
+    dmtot = dmtot + dm
+    lat[i, j] = s
+    # sample spin
+    # change magnetization
+
+    nattempt += 1
+    naccept += 1
+
+  return nattempt, naccept, dmtot
+
+def mc_sweep_cluster(lat, betaj):
+  """ Perform one Monte Carlo sweep using cluster move.
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+    betaj (float): inverse temperature in reduced units
+  Return:
+    (int, int, int): (nattempt, naccept, dmtot). nattempt is the
+     number of attempted moves. naccept is the number of accepted
+     moves. dmtot is the change in total magnetization due to all
+     accepted moves.
+  """
+  nx = lat.shape[0]
+  # !!!!!!!!!!!!! complete this function !!!!!!!!!!!!!
+  p = 1 - np.exp(- 2 * betaj)
+  init = lat.copy()
+  # select random spin
+  ind = np.random.randint(0, nx**2)
+  i, j = np.unravel_index(ind, (nx, nx))
+  cluster = [[i, j]]
+  check = [[i, j]]
+  checked = []
+  naccept = 0
+  nattempt = 0
+  while check:
+    center = random.choice(check)
+    check.remove(center)
+    checked.append(center)
+    neighbors = neighbor_list(center[0], center[1], nx)
+    neighbors = neighbors.tolist()
+    for el in neighbors:
+      if el not in checked:
+        temp = np.ravel_multi_index(el, (nx, nx))
+        templat = lat.flatten(order='c')
+        if templat[temp] == lat[i, j]:
+          check.append(el)
+          rand = np.random.random()
+          if rand < p:
+            cluster.append(el)
+  for k in cluster:
+    lat[k[0], k[1]] = -1 * lat[k[0], k[1]]
+  dmtot = total_mag(lat) - total_mag(init)
+  # calculate change in magnetization
+  naccept += 1
+  nattempt += 1
+  return nattempt, naccept, dmtot
+# =======  end functions you have to implement  ======= #
+# ===================================================== #
+
+def init_lat(nx, frac_up=0.5):
+  """ Initialize 2D lattice of Classical spins.
+
+  Args:
+    nx (int): number of sites along each dimension
+    frac_up (float, optional): fraction of up spins, default 0.5
+  Return:
+    np.array: integer array of shape (nx, nx), 2D lattice of +1 and -1
+  """
+  lat = np.ones([nx, nx], dtype=int)
+  sel = np.random.rand(nx, nx) > frac_up
+  lat[sel] = -1
+  return lat
+
+def energy(lat):
+  """ Calculate total energy of spin lattice.
+
+  Args:
+    lat (np.array): shape (nx, nx), 2D lattice of +1 and -1
+  Return:
+    float: total energy
+  """
+  pot = 0.0
+  nx = lat.shape[0]
+  from itertools import product
+  for i, j in product(range(nx), repeat=2):
+    pot += energy_site(i, j, lat)
+  return pot/2.
+
+if __name__ == '__main__':
+  # model parameters
+  nx = 20                    # number of spins along each dimension
+  betaj = 0.44096                # inverse temperature in reduced units
+  frac_up = 0.50              # initial fraction of up spins
+  # MC parameters
+  method = 'heatbath'          # 'random', 'heatbath', 'cluster'
+  nsweep = 1000              # total number of sweeps
+  # output files and format
+  lat_dat = 'hb_all_lat_0.44096_1.dat'    # store lattice spin configurations
+  print(lat_dat)
+  nconf = 10                 # write lat every nconf sweeps
+  scalar_dat = 'hb_scalar_0.44096_1.dat'  # store thermodynamic information
+  ntherm = 1                 # write thermo data every ntherm sweeps
+  therm_fmt = '%8d %14.8f %14.8f %14.8f\n'
+  therm_header = '# isweep  m2  mavg  pe\n'
+
+  # choose Monte Carlo method
+  method_map = {
+    'random': mc_sweep_random,
+    'heatbath': mc_sweep_heatbath,
+    'cluster': mc_sweep_cluster
+  }
+  mc_sweep = method_map[method]
+
+  # initialize lattice
+  lat = init_lat(nx, frac_up=frac_up)
+
+  restart = False
+  if restart:
+    lat = np.loadtxt('last_lat.dat')
+    nx = lat.shape[0]
+  else:
+    # clear output files
+    with open(lat_dat, 'w') as flat:
+      flat.write('# nx=%d\n' % nx)
+    with open(scalar_dat, 'w') as fsca:
+      fsca.write(therm_header)
+
+  # open output files for appending
+  flat = open(lat_dat, 'a')
+  fsca = open(scalar_dat, 'a')
+
+  # start MC loop
+  msg = 'starting %s sweeps using %s moves' % (nsweep, method)
+  if restart:
+    msg = 're'+msg
+  mtot = total_mag(lat)
+  from time import clock
+  start = clock()
+  print(msg)
+  naccept = 0
+  nattempt = 0
+  for isweep in range(nsweep):
+    # output observable
+    if (isweep % ntherm == 0):
+      mavg = float(mtot)/nx**2
+      m2 = mavg**2
+      pe = energy(lat)/nx**2
+      fsca.write(therm_fmt % (isweep, m2, mavg, pe))
+
+    # MC sweep
+    nat, nac, dm = mc_sweep(lat, betaj)
+    nattempt += nat
+    naccept += nac
+    mtot += dm
+
+    # output lattice
+    if (isweep % nconf) == 0:
+      flat.write(' '.join(lat.ravel().astype(int).astype(str))+'\n')
+  # end for
+  end = clock()
+
+  flat.close()
+  fsca.close()
+  print('acceptance rate: %3.2f percent' % (100.*naccept/nattempt))
+  print('elaspsed time in seconds:', end-start)
+  np.savetxt('last_lat.dat', lat, fmt='%d')
+# end __main__
