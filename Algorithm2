@@ -3,7 +3,6 @@ import random
 import scipy
 from matplotlib import pyplot as plt
 
-
 def neighbor_list(i, j, k, nx):
   """ Find all neighbors of site (i, j).
 
@@ -33,7 +32,6 @@ def initialize_lattice(beta, lim, mu):
                 lattice[i][j][k] = round(occupation)
     return lattice, np.sum(lattice)
 
-
 def energy(lattice, lim):
     en = 0
     for i in range(lim-1):
@@ -42,15 +40,12 @@ def energy(lattice, lim):
                 en = en + lattice[i,j,k] * (i**2 + j**2 + k**2)
     return en
 
-
-def move_probability(lattice, lattice_temp, beta, lim):
+def move_probability(lattice, lattice_temp, site, neighbor, beta, lim):
     energy1 = energy(lattice, lim)
     energy2 = energy(lattice_temp, lim)
-    oc1 = 1 / (np.exp(beta * (energy1)) - 1)
-    oc2 = 1 / (np.exp(beta * (energy2)) - 1) + 1
-    return oc2 / oc1 * np.exp(-energy2 + energy1)
-
-
+    oc1 = lattice[site[0] , site[1], site[2]]
+    oc2 = lattice[neighbor[0] , neighbor[1], neighbor[2]]
+    return oc2 / oc1 * np.exp(-beta *(energy2 - energy1))
 
 if __name__ == '__main__':
 
@@ -59,7 +54,7 @@ if __name__ == '__main__':
     mass = 48.
     lim = 10                                    # allowed k states
     mu = 0.1                                     # chemical potential
-    nsweep = 1000000
+    nsweep = 1000
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
@@ -92,8 +87,8 @@ if __name__ == '__main__':
     nattempt = 0
     for isweep in range(nsweep):
         if (isweep % ntherm == 0):
-            occu = lattice[0][0][0]
             etot = energy(lattice, lim)
+            occu = lattice[0][0][0]
             fsca.write(therm_fmt % (isweep, etot, occu))
         site = np.random.randint(0, lim-1, (1, 3))[0]
         while lattice[site[0] , site[1], site[2]] < 0:
@@ -103,7 +98,8 @@ if __name__ == '__main__':
         lattice_temp = np.copy(lattice)
         lattice_temp[site[0],site[1], site[2]] = lattice_temp[site[0],site[1], site[2]] - 1
         lattice_temp[neighbor[0], neighbor[1], neighbor[2]] = lattice_temp[neighbor[0], neighbor[1], neighbor[2]] + 1
-        prob = move_probability(lattice, lattice_temp, beta, lim)
+        prob = move_probability(lattice, lattice_temp, site, neighbor, beta, lim)
+        print(prob)
         nattempt += 1
         rand = np.random.random()
         if rand < prob:
@@ -111,3 +107,4 @@ if __name__ == '__main__':
             lattice[site[0], site[1], site[2]] = lattice[site[0], site[1], site[2]] - 1
             lattice[neighbor[0], neighbor[1], neighbor[2]] = lattice[neighbor[0], neighbor[1], neighbor[2]] + 1
     print(naccept)
+
