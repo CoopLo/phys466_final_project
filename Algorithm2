@@ -3,6 +3,7 @@ import random
 import scipy
 from matplotlib import pyplot as plt
 
+
 def neighbor_list(i, j, k, nx):
   """ Find all neighbors of site (i, j).
 
@@ -32,6 +33,7 @@ def initialize_lattice(beta, lim, mu):
                 lattice[i][j][k] = round(occupation)
     return lattice, np.sum(lattice)
 
+
 def energy(lattice, lim):
     en = 0
     for i in range(lim-1):
@@ -40,12 +42,15 @@ def energy(lattice, lim):
                 en = en + lattice[i,j,k] * (i**2 + j**2 + k**2)
     return en
 
+
 def move_probability(lattice, lattice_temp, beta, lim):
     energy1 = energy(lattice, lim)
     energy2 = energy(lattice_temp, lim)
     oc1 = 1 / (np.exp(beta * (energy1)) - 1)
     oc2 = 1 / (np.exp(beta * (energy2)) - 1) + 1
     return oc2 / oc1 * np.exp(-energy2 + energy1)
+
+
 
 if __name__ == '__main__':
 
