@@ -1,111 +1,174 @@
 import numpy as np
-import random
+from time import clock
 import scipy
+from scipy import integrate as integrate
 from matplotlib import pyplot as plt
 
-def neighbor_list(i, j, k, nx):
-  """ Find all neighbors of site (i, j).
+def initialize_lattice(num_atoms, beta, lim):
+    ''' oparameters:
+            num_atoms: number of atoms we're simulating with. Should be cubic number.
+            beta: temperature parameter, hbar * omega / T
+            lim: highest energy state occupied
+        returns:
+               lattice: (num_atoms**1/3, num_atoms**1/3, num_atoms**1/3, 3) array with energy levels distributed according to BE distribution
+      NOTE: Assumes energy levels of each particle same as that of quantum harmonic oscillator hbar * omega (n + 1/2)         
+      '''
+    
+    nx = int(round(num_atoms ** 1/3))
+    lattice = np.zeros([nx, nx, nx, 3], dtype=float)
+    lat = np.random.rand(nx, nx, nx, 3)   # generates (nx, nx, nx, 3) array of random integers
+    prob = []
+    for i in range(lim):
+        compare = 1 / (np.exp(beta * (i+0.5))-1) # calculates probability of being in energy level i
+        prob.append(compare)
+    prob = np.cumsum(prob/np.sum(prob))    # calculates cumulative probability for energy levels
+    for i in range(lim - 1):   # places lattice sites in higher energy levels given probabilities
+        sel = (lat < prob[i+1]) & (lat > prob[i])
+        lattice[sel] = i
+    return lattice          # returns (nx, nx, nx, 3) array of energy levels 
 
-  Args:
-    i (int): site index along x
-    j (int): site index along y
-    nx (int): number of sites along each dimension
-  Return:
-    list: a list of 2-tuples, [(i_left, j_left), (i_top, j_top),
-     (i_right, j_right), (i_bottom, j_bottom)]
-  """
-  left_center   = (i-1, j, k)
-  right_center  = (i+1, j, k)
-  top_center    = (i, j+1, k)
-  bottom_center = (i, j-1, k)
-  left_up = (i, j, k + 1)
-  left_down = (i, j, k -1)
-  return np.mod([left_center, right_center, top_center, bottom_center, left_up, left_down], nx)
+
+# Initialize lattice by samlping bose-einstein distribution
+# In chemical potential = 0 limit?
+def be_lattice(size, beta):
+    
+    lattice = np.zeros((size, size, size, 3))
+    # inverse bose-einstein distribution
+
+    def be_dist(x):
+        return x*(x*(x+3)+1)/(2*(np.exp(-beta*x))+1)
+
+    def boltz_dist(x):
+        return x*np.exp(-beta*x)
+
+    #print(be_dist(1))
+    #e = integrate.quad(be_dist, 0, np.inf)
+    #print(e)
+
+    e = integrate.quad(boltz_dist, 0, np.inf)
+    if(e[0] < 1):
+        for i in range(lattice.shape[0]):
+            for j in range(lattice.shape[1]):
+               for k in range(lattice.shape[2]):
+                   for l in range(lattice.shape[3]):
+                       if(np.random.random() < e[0]):
+                           lattice[i][j][k][l] = 1
+    else:
+        lattice.fill(int(e[0]/3))
+                
+    #return np.full((size, size, size, 3), 10)
+    return np.array(lattice)
 
 
-def initialize_lattice(beta, lim, n_atoms):
-    lattice = np.ones([lim-1, lim-1, lim-1])
-    for i in range(lim-1):
-        for j in range(lim-1):
-            for k in range(lim-1):
-                occupation = 1 / (np.exp(beta * ((i+1)**2 + (k+1)**2 + (j+1)**2)) - 1)
-                lattice[i][j][k] = occupation
-    lattice = np.round(lattice/np.sum(lattice) * n_atoms)
-    return lattice, np.sum(lattice)
 
-def energy(lattice, lim):
-    en = 0
-    for i in range(lim-1):
-        for j in range(lim-1):
-            for k in range(lim-1):
-                en = en + lattice[i,j,k] * ((i+1)**2 + (j+1)**2 + (k*i)**2)
-    return en
+def get_energy(lattice, mass):
+   ''' 
+       parameters:
+         lattice: the lattice
+         mass: mass of each particle
+   '''
+   return np.sum(lattice+0.5)
+    
 
-def move_probability(lattice, lattice_temp, site, neighbor, beta, lim):
-    energy1 = energy(lattice, lim)
-    energy2 = energy(lattice_temp, lim)
-    oc1 = lattice[site[0] , site[1], site[2]]
-    oc2 = lattice[neighbor[0] , neighbor[1], neighbor[2]]
-    return oc2 / oc1 * np.exp(-beta *(energy2 - energy1))
+###
+# parameters:
+#    lattice: the lattice we're working with
+#    site: the site on the lattice being changed
+#    e_coord: the energy coordinate being changed e.g. (0,0,1) for z, or (1,0,0) for x
+#
+# returns:
+#    Difference in energy from changing specifiec site
+###
+def energy_diff(lattice, site, e_coord):
+    old_en = np.sum((lattice[site[0]][site[1]][site[2]]))
+    new_en = np.sum(lattice[site[0]][site[1]][site[2]]+e_coord)
+    return old_en - new_en
+
 
 if __name__ == '__main__':
 
     # Initial conditions in reduced units
-    betas = [5., 4., 3., 2., 1., 0.5, 0.25, 0.1]
+    #betas = np.array([0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 1000.0])
+    betas = np.array([1000., 100., 50., 40., 30., 20., 10.,
+                      5., 4., 3., 2., 1., 0.5, 0.25, 0.1])
+    betas = np.array([1.])
     mass = 48.
-    lim = 10                                    # allowed k states
-    mu = 0.1                                     # chemical potential
-    nsweep = 1000
+    lim = 10
+    nsweeps = [10000, 20000, 20000, 50000, 100000]#, 100000, 3000000]
+    eq_frac = [0.4, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5]
+    nsweeps = [5000000]
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
-    num_atoms = 1000
     ntherm = 1
-    therm_fmt = '%8d %14.8f %14.8f\n'
-    therm_header = '# isweep  e\n'
-    for beta in betas:
-        # Initialize the lattice at specified temperature
-        lattice, num_atoms = initialize_lattice(beta, lim, num_atoms)
-        restart = False
-        if restart:
-            lattice = np.loadtxt('last_lat.dat')
-            num_atoms = np.sum(lattice)
-        else:
-            with open(lat_dat, 'w') as flat:
-                flat.write('# n_atoms=%d\n' % num_atoms)
-            with open(scalar_dat, 'w') as fsca:
-                fsca.write(therm_header)
-        flat = open(lat_dat, 'a')
-        fsca = open(scalar_dat, 'a')
+    therm_fmt = '%8d %14.8f %14.8f %14.8f\n'
+    therm_header = '# isweep  m2  mavg  pe\n'
 
-        msg = 'starting %s sweeps using temperature %s and number of particles %s'% (nsweep, 1/beta, num_atoms)
-        if restart:
-            msg = 're'+msg
-        etot = energy(lattice, lim)
-        from time import clock
-        start = clock()
-        print(msg)
-        naccept = 0
-        nattempt = 0
-        for isweep in range(nsweep):
-            if (isweep % ntherm == 0):
-                etot = energy(lattice, lim)
-                occu = lattice[0][0][0]
-                fsca.write(therm_fmt % (isweep, etot, occu))
-            site = np.random.randint(0, lim-1, (1, 3))[0]
-            while lattice[site[0] , site[1], site[2]] < 1:
-                site = np.random.randint(0, lim -1, (1, 3))[0]
-            neighbors = neighbor_list(site[0], site[1], site[2], lim-1)
-            neighbor = random.choice(neighbors)
-            lattice_temp = np.copy(lattice)
-            lattice_temp[site[0],site[1], site[2]] = lattice_temp[site[0],site[1], site[2]] - 1
-            lattice_temp[neighbor[0], neighbor[1], neighbor[2]] = lattice_temp[neighbor[0], neighbor[1], neighbor[2]] + 1
-            prob = move_probability(lattice, lattice_temp, site, neighbor, beta, lim)
-            nattempt += 1
-            rand = np.random.random()
-            if rand < prob:
-                naccept += 1
-                lattice[site[0], site[1], site[2]] = lattice[site[0], site[1], site[2]] - 1
-                lattice[neighbor[0], neighbor[1], neighbor[2]] = lattice[neighbor[0], neighbor[1], neighbor[2]] + 1
-        print(lattice[0][0][0]/num_atoms, energy(lattice, lim))
+    runs = 10
 
+    sizes = [2, 3, 4, 5, 7, 10, 22]
+    sizes = [22]
+    for i, size in enumerate(sizes):
+        num_atoms = size**3
+        av_en = np.zeros((len(betas), runs))
+        av_gs_occ = np.zeros((len(betas), runs))
+        for t in range(runs):
+            for idx, beta in enumerate(betas):
+                nsweep = nsweeps[i]
+                energy = []
+                gs_occ = []
+                lattice = be_lattice(size, beta)
+                msg = 'starting %s sweeps using temperature %s and number of particles %s' % \
+                  (nsweep, beta, num_atoms)
+                print(msg)
+                for isweep in range(nsweeps[i]):
+                    if (isweep % ntherm == 0):
+
+                        # Select site to change, coordinate, and up or down
+                        site = np.random.randint(0, size, (1, 3))[0]
+                        coord = np.random.randint(0, 3)
+                        e_coord = [1,0,0] if coord==0 else [0,1,0] if coord==1 else [0,0,1] 
+                        change = np.random.randint(0, 2)
+                        change = -1 if change==0 else 1
+
+                        # change in energy from site change
+                        delta_e = energy_diff(lattice, site, np.array(e_coord)*change)
+                        
+                        # transition probability
+                        prob = 1/2 * 1./np.cosh(delta_e*beta/2) * np.exp(change*delta_e*beta/2)
+                        if(prob > np.random.random()):
+                            #print("TRANSITIONING")
+                            #print(prob)
+                            lattice[site[0]][site[1]][site[2]][coord] += change
+
+                        # calculation of ground state occupancy
+                        #gsoccupancy = sum(np.shape(~lattice.any(axis=3))) / num_atoms    
+                        gsoccupancy = np.count_nonzero(np.sum(lattice, axis=3)==0)
+                        gs_occ.append(gsoccupancy/num_atoms)
+                        # generates array of Booleans (True if it exists in ground state,
+                        # False otherwise)
+                        # and sums for ground state occupancy
+                        
+                        # calculation of total energy
+                        energy.append(get_energy(lattice, mass))
+                        #print(lattice)
+                #print(energy)
+                fig, ax = plt.subplots(2)
+                ax[0].plot(energy)
+                ax[1].plot(gs_occ)
+                plt.show()
+                exit(1)
+
+                av_en[idx][t] = np.average(energy[int(eq_frac[i]*nsweeps[i]):])
+                av_gs_occ[idx][t] = np.average(gs_occ[int(eq_frac[i]*nsweeps[i]):])
+
+        fig, ax = plt.subplots()
+        av_en = np.average(av_en, axis=1)
+        av_gs_occ = np.average(av_gs_occ, axis=1)
+        print(1/betas)
+        #ax[0].plot(1/betas, av_en)
+        #ax[0].set(title="Average Energy", xlabel="Temperature", ylabel="Energy")
+        #ax.plot(1/betas, av_gs_occ)
+        #ax.set(title="Ground State Occupancy for {} Particles".format(num_atoms),
+        #       xlabel="Temperature", ylabel="Occupancy")
+        #plt.savefig("./graphs/{}.png".format(num_atoms))
