@@ -77,7 +77,7 @@ if __name__ == '__main__':
                 if energy_model =='free':
                     energy_table[i,j,k] = ((i+1)**2 + (j+1)**2 + (k+1)**2)
                 elif energy_model =='harmonic':
-                    energy_table[i,j,k] = (i**2 + j**2 + k**2 +3/2)
+                    energy_table[i,j,k] = (i + j + k +3/2)
                 else:
                     energy_table[i,j,k] = ((i+1)**2 + (j+1)**2 + (k+1)**2)
     for beta in betas:
