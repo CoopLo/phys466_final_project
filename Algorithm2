@@ -97,6 +97,8 @@ if __name__ == '__main__':
                 site = np.random.randint(0, lim -1, (1, 3))[0]
             neighbors = neighbor_list(site[0], site[1], site[2], lim-1)
             neighbor = random.choice(neighbors)
+            if lattice_temp[neighbor[0], neighbor[1], neighbor[2]] + 1 >= lim: #prevents a move to an energy above lim
+                continue
             lattice_temp = np.copy(lattice)
             lattice_temp[site[0],site[1], site[2]] = lattice_temp[site[0],site[1], site[2]] - 1
             lattice_temp[neighbor[0], neighbor[1], neighbor[2]] = lattice_temp[neighbor[0], neighbor[1], neighbor[2]] + 1
