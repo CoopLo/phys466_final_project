@@ -86,12 +86,13 @@ def mc(size):
     num_atoms = size**3
 
     # Do for each temperature
-    for idx, beta in enumerate(betas):
+    print("Starting simulation for {} atoms".format(size**3))
+    for t in range(runs):
         av_en = np.zeros((len(betas), runs))
         av_gs_occ = np.zeros((len(betas), runs))
 
         # More than one run so we can average later
-        for t in range(runs):
+        for idx, beta in enumerate(betas):
             lattice = be_lattice(size, betas[idx])
             energy = []
             gs_occ = []
@@ -120,6 +121,7 @@ def mc(size):
                         lattice[site[0]][site[1]][site[2]][coord] += change
 
                     # calculation of ground state occupancy
+                    gsoccupancy = np.count_nonzero(np.sum(lattice, axis=3)==0)
                     gs_occ.append(gsoccupancy/num_atoms)
                     
                     # calculation of total energy
@@ -129,12 +131,31 @@ def mc(size):
             av_en[idx][t] = np.average(energy[int(eq_frac[i]*nsweeps[i]):])
             av_gs_occ[idx][t] = np.average(gs_occ[int(eq_frac[i]*nsweeps[i]):])
             
-        # Averageing and making plot
-        fig, ax = plt.subplots()
-        av_en = np.average(av_en, axis=1)
-        av_gs_occ = np.average(av_gs_occ, axis=1)
-        ax.plot(1/betas, av_gs_occ)
-        plt.savefig("./graphs/{}_parallel.png".format(size))
+    # Averageing and making plot
+    fig, ax = plt.subplots()
+    av_en = np.average(av_en, axis=1)
+    av_gs_occ = np.average(av_gs_occ, axis=1)
+    ax.plot(1/betas, av_gs_occ)
+    plt.savefig("./graphs/{}_parallel.png".format(size))
+
+    # Write data
+
+    # Lattice
+    with open("/data/lat_dat_{}.txt".format(size**3)) as fout:
+        fout.write(lattice)
+    fout.close()
+    
+    # Ground state occupancy
+    with open("/data/gs_dat_{}.txt".format(size**3)) as fout:
+        fout.write(av_gs_occ)
+    fout.close()
+
+    # Energy
+    with open("/data/energy_dat_{}.txt".format(size**3)) as fout:
+        fout.write(av_en)
+    fout.close()
+
+    print("Finshed simulation for {} atoms".format(size**3))
 
 
 if __name__ == '__main__':

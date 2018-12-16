@@ -91,12 +91,12 @@ if __name__ == '__main__':
     #betas = np.array([0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 1000.0])
     betas = np.array([1000., 100., 50., 40., 30., 20., 10.,
                       5., 4., 3., 2., 1., 0.5, 0.25, 0.1])
-    betas = np.array([1.])
+    betas = np.array([10.0])
     mass = 48.
     lim = 10
     nsweeps = [10000, 20000, 20000, 50000, 100000]#, 100000, 3000000]
     eq_frac = [0.4, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5]
-    nsweeps = [5000000]
+    nsweeps = [500000]
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
@@ -106,8 +106,9 @@ if __name__ == '__main__':
 
     runs = 10
 
-    sizes = [2, 3, 4, 5, 7, 10, 22]
-    sizes = [22]
+    sizes = [4, 3, 4, 5, 7]#, 10, 22]
+    #sizes = [22]
+    lattice_snapshots = []
     for i, size in enumerate(sizes):
         num_atoms = size**3
         av_en = np.zeros((len(betas), runs))
@@ -121,42 +122,50 @@ if __name__ == '__main__':
                 msg = 'starting %s sweeps using temperature %s and number of particles %s' % \
                   (nsweep, beta, num_atoms)
                 print(msg)
+                print(nsweeps[i])
+                acc = 0
                 for isweep in range(nsweeps[i]):
-                    if (isweep % ntherm == 0):
+                    #if (isweep % ntherm == 0):
 
-                        # Select site to change, coordinate, and up or down
-                        site = np.random.randint(0, size, (1, 3))[0]
-                        coord = np.random.randint(0, 3)
-                        e_coord = [1,0,0] if coord==0 else [0,1,0] if coord==1 else [0,0,1] 
-                        change = np.random.randint(0, 2)
-                        change = -1 if change==0 else 1
+                    # Select site to change, coordinate, and up or down
+                    site = np.random.randint(0, size, (1, 3))[0]
+                    coord = np.random.randint(0, 3)
+                    e_coord = [1,0,0] if coord==0 else [0,1,0] if coord==1 else [0,0,1] 
+                    change = np.random.randint(0, 2)
+                    change = -1 if change==0 else 1
 
-                        # change in energy from site change
-                        delta_e = energy_diff(lattice, site, np.array(e_coord)*change)
-                        
-                        # transition probability
-                        prob = 1/2 * 1./np.cosh(delta_e*beta/2) * np.exp(change*delta_e*beta/2)
-                        if(prob > np.random.random()):
-                            #print("TRANSITIONING")
-                            #print(prob)
-                            lattice[site[0]][site[1]][site[2]][coord] += change
+                    # change in energy from site change
+                    delta_e = energy_diff(lattice, site, np.array(e_coord)*change)
+                    #print(delta_e)
+                    
+                    # transition probability
+                    prob = 1/2 * 1./np.cosh(delta_e*beta/2) * np.exp(beta/2)
+                    if(prob > np.random.random()):
+                        #print("TRANSITIONING")
+                        #print(prob)
+                        lattice[site[0]][site[1]][site[2]][coord] += change
+                        acc += 1
 
-                        # calculation of ground state occupancy
-                        #gsoccupancy = sum(np.shape(~lattice.any(axis=3))) / num_atoms    
-                        gsoccupancy = np.count_nonzero(np.sum(lattice, axis=3)==0)
-                        gs_occ.append(gsoccupancy/num_atoms)
-                        # generates array of Booleans (True if it exists in ground state,
-                        # False otherwise)
-                        # and sums for ground state occupancy
-                        
-                        # calculation of total energy
-                        energy.append(get_energy(lattice, mass))
-                        #print(lattice)
+                    # calculation of ground state occupancy
+                    #gsoccupancy = sum(np.shape(~lattice.any(axis=3))) / num_atoms    
+                    gsoccupancy = np.count_nonzero(np.sum(lattice, axis=3)==0)
+                    gs_occ.append(gsoccupancy/num_atoms)
+                    # generates array of Booleans (True if it exists in ground state,
+                    # False otherwise)
+                    # and sums for ground state occupancy
+                    
+                    # calculation of total energy
+                    energy.append(get_energy(lattice, mass))
+                    lattice_snapshots.append(np.average(lattice, axis=3))
+                    #print(lattice)
                 #print(energy)
                 fig, ax = plt.subplots(2)
                 ax[0].plot(energy)
                 ax[1].plot(gs_occ)
-                plt.show()
+                with open('./data/lattice_{}_{}.txt'.format(beta, size), 'w') as fout:
+                    fout.write(str(lattice_snapshots))
+                #plt.show()
+                print("ACCEPTANCE RATIO: {}".format(acc/nsweeps[i]))
                 exit(1)
 
                 av_en[idx][t] = np.average(energy[int(eq_frac[i]*nsweeps[i]):])
