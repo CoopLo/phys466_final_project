@@ -77,17 +77,17 @@ if __name__ == '__main__':
 
     # Initial conditions in reduced units
     betas = np.array([100, 10, 5., 4., 3., 2., 1., 0.5, .25, 0.1, 0.05, 0.01, 0.005, 0.001])
-    #betas = np.array([1.0])
+    #betas = np.array([0.001])
     mass = 48.
-    lim = 50                                # allowed k states
+    lim = 10                                # allowed k states
     mu = 0.1                                     # chemical potential
-    nsweep = 500
-    num_atoms = 50
+    nsweep = 3000
+    num_atoms = 200
 
     # 'boltz' for boltzmann distribution starting lattice, 'rand' for random,
     # 'bose' for bose-einstein
     dist='bose' 
-    energy_model='free' #'free', 'harmonic' defaults to free particle
+    energy_model='harmonic' #'free', 'harmonic' defaults to free particle
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
@@ -112,6 +112,7 @@ if __name__ == '__main__':
     # Loop over each beta
     av_occ = []
     av_en = []
+    start = clock()
     for beta in betas:
 
         # Yeet
@@ -148,11 +149,11 @@ if __name__ == '__main__':
 
         for isweep in range(nsweep):
 
-            max_val = np.max(np.where(lattice))
+            #max_val = np.max(np.where(lattice))
 
             # Check highest state that gets occupied
-            if(max_val > highest_val):
-                highest_val = max_val
+            #if(max_val > highest_val):
+            #    highest_val = max_val
 
             if(isweep % (nsweep/20) == 0):
                 left = '['
@@ -174,7 +175,6 @@ if __name__ == '__main__':
                 choices = indexes[np.where(truth)]
                 choice = np.ceil(num_atoms*np.random.random())
 
-                #print("Choices: {}".format(choices))
                 particles = 0
                 for c in choices:
                     particles += lattice[c[0]][c[1]][c[2]]
@@ -199,9 +199,9 @@ if __name__ == '__main__':
                               energy_table[site[0]][site[1]][site[2]]
 
                 # Get transition probability
-                old_oc = lattice[site[0]][site[1]][site[2]] - 1
+                old_oc = lattice[site[0]][site[1]][site[2]]
                 new_oc = lattice[neighbor[0]][neighbor[1]][neighbor[2]] + 1
-                prob =  np.exp(-beta*energy_diff)
+                prob =  new_oc / old_oc * np.exp(-beta*energy_diff)
 
                 # Move if accepted
                 acc = np.random.random()
@@ -212,8 +212,23 @@ if __name__ == '__main__':
 
                 nattempt += 1
 
+
             occ_num.append(lattice[0][0][0]/num_atoms)
             en.append(np.sum(lattice * energy_table))
+
+            #try:
+            #    if((en[isweep] == en[isweep-1]) and (en[isweep] == en[isweep-2])):
+            #        print(lattice)
+            #        exit(1)
+            #except:
+            #    print(isweep)
+
+        #fig, ax = plt.subplots()
+        #ax.plot(occ_num)
+        #plt.show()
+        #print()
+        #print(naccept/nattempt)
+        #print(np.average(occ_num[100:]))
 
         #print(len(en))
         accept_ratio = naccept/nattempt
@@ -227,15 +242,18 @@ if __name__ == '__main__':
         print("Occupation number: {}, Energy: {}, Acceptance Ratio: {}, Atoms: {}\n".format(
               lattice[0][0][0]/num_atoms, energy(lattice, lim, energy_table), accept_ratio,
               np.sum(lattice)))
+        end = clock()
+        #print("Total time: {}".format(end-start))
         #exit(1)
         #occ_num.append(lattice[0][0][0]/num_atoms)
         av_occ.append(np.average(occ_num[int(nsweep/2):]))
         av_en.append(np.average(en[int(nsweep/2):]))
+        #exit(1)
     
     fig, ax = plt.subplots(2)
     print(av_en)
     print(av_occ)
     ax[0].plot(1/betas, av_en)
     ax[1].plot(1/betas, av_occ)
-    #plt.show()
+    plt.show()
 
