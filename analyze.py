@@ -41,7 +41,7 @@ def analyze(num_atoms, model):
     plt.show()
 
 if __name__ == '__main__':
-    num_atoms = [5, 10, 50, 100, 200]
+    num_atoms = [5, 10, 50, 100, 200, 500]
     model = 'harmonic'
     analyze(num_atoms, model)
 
