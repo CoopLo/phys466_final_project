@@ -24,32 +24,7 @@ def neighbor_list(i, j, k, nx):
   return np.mod([left_center, right_center, top_center, bottom_center, left_up, left_down], nx)
 
 def initialize_lattice(beta, lim, n_atoms,energy_table,dist):
-
-    # Lattice all 1's to start (not sure if it matters)
-    lattice = np.zeros([lim, lim, lim])
-
-    # Fill according to selected distribution
-    #if dist == 'boltz':
-    #    lattice[:]=np.exp(-energy_table[:]*beta)
-
-    #elif dist == 'rand':
-    #    lattice[:]=np.random.random()
-
-    #else: # bose-einstein distribution
-    #    lattice[:]= 1 / (np.exp(beta * (energy_table[:])) - 1)
-
-    # Maybe not the best thing to do here?
-    #lattice = np.round(lattice/np.sum(lattice) * n_atoms)
-
-    #if(n_atoms != np.sum(lattice)):
-        #print(lattice)
-        #exit(1)
     lattice[0][0][0] = n_atoms
-
-    #if(np.sum(lattice) != n_atoms):
-    #    print(lattice)
-    #    exit(1)
-
     return lattice, np.sum(lattice)
 
 
@@ -76,13 +51,15 @@ def move_probability(lattice, lattice_temp, site, neighbor, beta, lim,energy_tab
 if __name__ == '__main__':
 
     # Initial conditions in reduced units
-    betas = np.array([100, 10, 5., 4., 3., 2., 1., 0.5, .25, 0.1, 0.05, 0.01, 0.005, 0.001])
+    betas = np.array([50, 10, 5., 4., 3., 2., 1., 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, .25, 0.1])
+    #, 0.05, 0.01, 0.005, 0.001])
     #betas = np.array([0.001])
     mass = 48.
     lim = 10                                # allowed k states
     mu = 0.1                                     # chemical potential
     nsweep = 3000
-    num_atoms = 200
+    n_atoms = [5, 10, 50, 100, 200, 500]
+    n_atoms = [200, 500]
 
     # 'boltz' for boltzmann distribution starting lattice, 'rand' for random,
     # 'bose' for bose-einstein
@@ -113,142 +90,145 @@ if __name__ == '__main__':
     av_occ = []
     av_en = []
     start = clock()
-    for beta in betas:
 
-        # Yeet
-        en = []
-        occ_num = []
+    for num_atoms in n_atoms:
+        for beta in betas:
 
-        # Initialize the lattice at specified temperature
-        lattice, num_atoms = initialize_lattice(beta, lim, num_atoms, energy_table, dist)
-        restart = False
+            # Yeet
+            en = []
+            occ_num = []
 
-        with open(lat_dat, 'w') as flat:
-            flat.write('# n_atoms=%d\n' % num_atoms)
-        with open(scalar_dat, 'w') as fsca:
-            fsca.write(therm_header)
-        flat = open(lat_dat, 'a')
-        fsca = open(scalar_dat, 'a')
+            # Initialize the lattice at specified temperature
+            lattice, num_atoms = initialize_lattice(beta, lim, num_atoms, energy_table, dist)
+            restart = False
 
-        msg = '%s sweeps, temperature %s, %s particles, %s distribution'% \
-              (nsweep, 1/beta, num_atoms, dist)
-        if restart:
-            msg = 're'+msg
-        etot = energy(lattice, lim,energy_table)
-        start = clock()
-        print(msg)
-        naccept = 0
-        nattempt = 0
-        indexes = np.ones([lim,lim,lim,3],dtype=int)
+            with open(lat_dat, 'w') as flat:
+                flat.write('# n_atoms=%d\n' % num_atoms)
+            with open(scalar_dat, 'w') as fsca:
+                fsca.write(therm_header)
+            flat = open(lat_dat, 'a')
+            fsca = open(scalar_dat, 'a')
 
-        lm = ''
-        for i in range(lim):
-            for j in range(lim):
-                for k in range(lim):
-                    indexes[i,j,k]=[i,j,k]
+            msg = '%s sweeps, temperature %s, %s particles, %s distribution'% \
+                  (nsweep, 1/beta, num_atoms, dist)
+            if restart:
+                msg = 're'+msg
+            etot = energy(lattice, lim,energy_table)
+            start = clock()
+            print(msg)
+            naccept = 0
+            nattempt = 0
+            indexes = np.ones([lim,lim,lim,3],dtype=int)
 
-        for isweep in range(nsweep):
+            for i in range(lim):
+                for j in range(lim):
+                    for k in range(lim):
+                        indexes[i,j,k]=[i,j,k]
 
-            #max_val = np.max(np.where(lattice))
+            lm = ''
+            for isweep in range(nsweep):
 
-            # Check highest state that gets occupied
-            #if(max_val > highest_val):
-            #    highest_val = max_val
+                #max_val = np.max(np.where(lattice))
 
-            if(isweep % (nsweep/20) == 0):
-                left = '['
-                right = ']'
-                rm = ' '*(20 - len(lm))
-                print("{}{}{}{} {}%".format(left,lm,rm,right, isweep/nsweep*100), end='\r')
-                lm += '='
+                # Check highest state that gets occupied
+                #if(max_val > highest_val):
+                #    highest_val = max_val
 
-            for atom in range(int(num_atoms)):
-                #if (isweep % ntherm == 0):
-                #    etot = energy(lattice, lim,energy_table)
-                #    occu = lattice[0][0][0]
-                #    fsca.write(therm_fmt % (isweep, etot, occu))
+                if(isweep % (nsweep/20) == 0):
+                    left = '['
+                    right = ']'
+                    rm = ' '*(20 - len(lm))
+                    print("{}{}{}{} {}%".format(left,lm,rm,right, isweep/nsweep*100), end='\r')
+                    lm += '='
 
-                # Picks out energies that have at least one particle
-                truth = lattice>=1
+                for atom in range(int(num_atoms)):
+                    #if (isweep % ntherm == 0):
+                    #    etot = energy(lattice, lim,energy_table)
+                    #    occu = lattice[0][0][0]
+                    #    fsca.write(therm_fmt % (isweep, etot, occu))
 
-                # Index of non zero occupancies, need to weight by particle number
-                choices = indexes[np.where(truth)]
-                choice = np.ceil(num_atoms*np.random.random())
+                    # Picks out energies that have at least one particle
+                    truth = lattice>=1
 
-                particles = 0
-                for c in choices:
-                    particles += lattice[c[0]][c[1]][c[2]]
-                    if(choice <= particles):
-                        site = c
-                        break
-                
-                # Choose neighbor
-                neighbors = neighbor_list(site[0], site[1], site[2], lim)
+                    # Index of non zero occupancies, need to weight by particle number
+                    choices = indexes[np.where(truth)]
+                    choice = np.ceil(num_atoms*np.random.random())
 
-                # Get rid of unphysical neighbors
-                neighbors[np.sum((neighbors - site), axis=1) > 1] = [0,0,0]
+                    particles = 0
+                    for c in choices:
+                        particles += lattice[c[0]][c[1]][c[2]]
+                        if(choice <= particles):
+                            site = c
+                            break
+                    
+                    # Choose neighbor
+                    neighbors = neighbor_list(site[0], site[1], site[2], lim)
 
-                # Get rid of neighbors that are the same as site
-                neighbors = neighbors[np.sum(neighbors==[site[0],site[1],site[2]],axis=1)!=3]
+                    # Get rid of unphysical neighbors
+                    neighbors[np.sum((neighbors - site), axis=1) > 1] = site
 
-                # Select neighbor
-                neighbor = random.choice(neighbors)
+                    # Get rid of neighbors that are the same as site
+                    neighbors = neighbors[np.sum(neighbors==[site[0],site[1],site[2]],axis=1)!=3]
 
-                # Calculate energy difference
-                energy_diff = energy_table[neighbor[0]][neighbor[1]][neighbor[2]] - \
-                              energy_table[site[0]][site[1]][site[2]]
+                    # Select neighbor
+                    neighbor = random.choice(neighbors)
 
-                # Get transition probability
-                old_oc = lattice[site[0]][site[1]][site[2]]
-                new_oc = lattice[neighbor[0]][neighbor[1]][neighbor[2]] + 1
-                prob =  new_oc / old_oc * np.exp(-beta*energy_diff)
+                    # Calculate energy difference
+                    energy_diff = energy_table[neighbor[0]][neighbor[1]][neighbor[2]] - \
+                                  energy_table[site[0]][site[1]][site[2]]
 
-                # Move if accepted
-                acc = np.random.random()
-                if(prob > acc):
-                    lattice[site[0]][site[1]][site[2]] -= 1
-                    lattice[neighbor[0]][neighbor[1]][neighbor[2]] += 1
-                    naccept += 1
+                    # Get transition probability
+                    old_oc = lattice[site[0]][site[1]][site[2]]
+                    new_oc = lattice[neighbor[0]][neighbor[1]][neighbor[2]] + 1
+                    prob =  new_oc / old_oc * np.exp(-beta*energy_diff)
 
-                nattempt += 1
+                    # Move if accepted
+                    acc = np.random.random()
+                    if(prob > acc):
+                        lattice[site[0]][site[1]][site[2]] -= 1
+                        lattice[neighbor[0]][neighbor[1]][neighbor[2]] += 1
+                        naccept += 1
+
+                    nattempt += 1
 
 
-            occ_num.append(lattice[0][0][0]/num_atoms)
-            en.append(np.sum(lattice * energy_table))
+                occ_num.append(lattice[0][0][0]/num_atoms)
+                en.append(np.sum(lattice * energy_table))
 
-            #try:
-            #    if((en[isweep] == en[isweep-1]) and (en[isweep] == en[isweep-2])):
-            #        print(lattice)
-            #        exit(1)
-            #except:
-            #    print(isweep)
+                #try:
+                #    if((en[isweep] == en[isweep-1]) and (en[isweep] == en[isweep-2])):
+                #        print(lattice)
+                #        exit(1)
+                #except:
+                #    print(isweep)
 
-        #fig, ax = plt.subplots()
-        #ax.plot(occ_num)
-        #plt.show()
-        #print()
-        #print(naccept/nattempt)
-        #print(np.average(occ_num[100:]))
+            #fig, ax = plt.subplots()
+            #ax.plot(occ_num)
+            #plt.show()
+            #print()
+            #print(naccept/nattempt)
+            #print(np.average(occ_num[100:]))
 
-        #print(len(en))
-        accept_ratio = naccept/nattempt
+            #print(len(en))
+            accept_ratio = naccept/nattempt
 
-        np.save("./run_dat/en_trace_{}_{}_{}".format(int(num_atoms), beta, energy_model), en)
-        np.save("./run_dat/occ_trace_{}_{}_{}".format(int(num_atoms), beta, energy_model),
-                                                      occ_num)
-        np.save("./run_dat/acc_rate_{}_{}_{}".format(int(num_atoms), beta, energy_model),
-                                                     np.array(accept_ratio))
+            np.save("./good_run_dat/en_trace_{}_{}_{}".format(int(num_atoms), beta,
+                                                   energy_model), en)
+            np.save("./good_run_dat/occ_trace_{}_{}_{}".format(int(num_atoms), beta,
+                                                   energy_model), occ_num)
+            np.save("./good_run_dat/acc_rate_{}_{}_{}".format(int(num_atoms), beta,
+                                                   energy_model), np.array(accept_ratio))
 
-        print("Occupation number: {}, Energy: {}, Acceptance Ratio: {}, Atoms: {}\n".format(
-              lattice[0][0][0]/num_atoms, energy(lattice, lim, energy_table), accept_ratio,
-              np.sum(lattice)))
-        end = clock()
-        #print("Total time: {}".format(end-start))
-        #exit(1)
-        #occ_num.append(lattice[0][0][0]/num_atoms)
-        av_occ.append(np.average(occ_num[int(nsweep/2):]))
-        av_en.append(np.average(en[int(nsweep/2):]))
-        #exit(1)
+            print("Occupation number: {}, Energy: {}, Acceptance Ratio: {}, Atoms: {}\n".format(
+                  lattice[0][0][0]/num_atoms, energy(lattice, lim, energy_table), accept_ratio,
+                  np.sum(lattice)))
+            end = clock()
+            #print("Total time: {}".format(end-start))
+            #exit(1)
+            #occ_num.append(lattice[0][0][0]/num_atoms)
+            av_occ.append(np.average(occ_num[int(nsweep/2):]))
+            av_en.append(np.average(en[int(nsweep/2):]))
+            #exit(1)
     
     fig, ax = plt.subplots(2)
     print(av_en)
