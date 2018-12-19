@@ -62,7 +62,7 @@ if __name__ == '__main__':
     mass = 48.
     lim = 10                                # allowed k states
     mu = 0.1                                     # chemical potential
-    nsweep = 2000
+    nsweep = 1000
     n_atoms = [5, 10, 50, 100, 200, 500]
 
     # 'boltz' for boltzmann distribution starting lattice, 'rand' for random,

@@ -53,6 +53,7 @@ if __name__ == '__main__':
 
     # Initial conditions in reduced units
     betas = np.array([50, 10, 5., 4., 3., 2., 1., 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, .25, 0.1])
+    #betas = np.array([0.08, 0.05, 0.03, 0.01, 0.008, 0.005])
     #, 0.05, 0.01, 0.005, 0.001])
     #betas = np.array([0.001])
     mass = 48.
@@ -64,7 +65,7 @@ if __name__ == '__main__':
     # 'boltz' for boltzmann distribution starting lattice, 'rand' for random,
     # 'bose' for bose-einstein
     dist='bose' 
-    energy_model='free' #'free', 'harmonic' defaults to free particle
+    energy_model='harmonic' #'free', 'harmonic' defaults to free particle
     lat_dat = 'lat.dat'
     scalar_dat = 'scalar.dat'
     nconf = 10
@@ -93,6 +94,7 @@ if __name__ == '__main__':
 
     for num_atoms in n_atoms:
         for beta in betas:
+            start = clock()
 
             # Yeet
             en = []
@@ -219,9 +221,10 @@ if __name__ == '__main__':
             np.save("./good_run_dat/acc_rate_{}_{}_{}".format(int(num_atoms), beta,
                                                    energy_model), np.array(accept_ratio))
 
-            print("Occupation number: {}, Energy: {}, Acceptance Ratio: {}, Atoms: {}\n".format(
+            end = clock()
+            print("Occupation number: {}, Energy: {}, Acceptance Ratio: {}, Atoms: {}, Time: {}\n".format(
                   lattice[0][0][0]/num_atoms, energy(lattice, lim, energy_table), accept_ratio,
-                  np.sum(lattice)))
+                  np.sum(lattice), end-start))
             end = clock()
             #print("Total time: {}".format(end-start))
             #exit(1)

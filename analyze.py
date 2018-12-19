@@ -1,6 +1,11 @@
 from matplotlib import pyplot as plt
+import matplotlib
 import numpy as np
 import tools
+
+font = {'size': 22}
+matplotlib.rc('font', **font)
+
 
 def canonical_analyze(num_atoms, model):
     #betas = np.array([100, 10, 5, 4, 3, 2, 1, 0.5, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001])
@@ -23,16 +28,18 @@ def canonical_analyze(num_atoms, model):
         print(n)
         av_occ = []
         av_std = []
+        av_en = []
+        av_en_std = []
         for b in betas:
-            en = np.load("./bad_run_dat/en_trace_{}_{}_{}.npy".format(int(n), b,
+            en = np.load("./good_run_dat/en_trace_{}_{}_{}.npy".format(int(n), b,
                                                                        model))
-            occ = np.load("./bad_run_dat/occ_trace_{}_{}_{}.npy".format(int(n), b,
+            occ = np.load("./good_run_dat/occ_trace_{}_{}_{}.npy".format(int(n), b,
                                                                        model))
-            acc = np.load("./bad_run_dat/acc_rate_{}_{}_{}.npy".format(int(n), b,
+            acc = np.load("./good_run_dat/acc_rate_{}_{}_{}.npy".format(int(n), b,
                                                                        model))
             av_occ.append(np.average(occ[500:]))
             #av_std.append(np.std(occ[500:]))
-            av_std.append(tools.std_error(occ[500:]))
+            #av_std.append(tools.std_error(occ[500:]))
             #if(n==100):
             #    ax1[0].plot(en, label=1/b, linewidth=0.3)
             #    ax1[1].plot(occ, label=1/b, linewidth=0.3)
@@ -40,19 +47,36 @@ def canonical_analyze(num_atoms, model):
                 #plt.show()
                 #exit(1)
             #print(np.average(occ[50:]))
+            av_en.append(np.average(en[500:])/n**(1/3))
+            av_en_std.append(tools.std_error(en[500:]))
 
         #print(av_occ)
 
         #ax.plot(1/(betas * (n**(1/3))), av_occ, label="{} Particles".format(n), linewidth=0.7)
-        ax.scatter(1/(betas * (n**(1/3))), av_occ, marker=marker[idx], color=colors[idx],
-                   edgecolor='k', label='{} Particles'.format(n))
-        ax.errorbar(1/(betas * (n**(1/3))), av_occ, av_std, capsize=7, color=colors[idx])
+        spacing = 1/(betas * n**(1/3))
+        print(av_en)
+        fig, ax = plt.subplots()
+        #ax.scatter(spacing, av_en)
+        heat_capacity = []
+        for idx, energy in enumerate(av_en):
+            if(idx == 0):
+                heat_capacity.append(energy/spacing[idx])
+            else:
+                heat_capacity.append((av_en[idx] - av_en[idx-1])/spacing[idx])
+
+        ax.scatter(spacing[1:], heat_capacity[1:])
+        ax.errorbar(spacing[1:], heat_capacity[1:], av_en_std[1:], capsize=7, fmt='none')
+        plt.show()
+        exit(1)
+        #ax.scatter(1/(betas * (n**(1/3))), av_occ, marker=marker[idx], color=colors[idx],
+        #           edgecolor='k', label='{} Particles'.format(n))
+        #ax.errorbar(1/(betas * (n**(1/3))), av_occ, av_std, capsize=7, color=colors[idx])
     ax.set(xlabel=r"$T/N^{1/3}$", ylabel=r"$\left<N_0\right>/N$",
-           title="Boltzmanon Ground State Occupancy vs. Temperature", xlim=(0, 1.5))
+           title="Boson Ground State Occupancy vs. Temperature", xlim=(0, 1.5))
     ax.legend(loc='best')
     #ax1[0].legend(loc='best')
     #ax1[1].legend(loc='best')
-    plt.show()
+    #plt.show()
 
 
 def canonical_dynamic(num_atoms, model):
@@ -150,8 +174,9 @@ def grand_canonical_analyze(num_atoms, model):
 
 if __name__ == '__main__':
     num_atoms = [5, 10, 50, 100, 200, 500]
+    #num_atoms = [10]
     model = 'harmonic'
-    #canonical_analyze(num_atoms, model)
-    canonical_dynamic(num_atoms, model)
-    #grand_canonical_analyze(num_atoms, model)
+    canonical_analyze(num_atoms, model)
+    #canonical_dynamic(num_atoms, model)
+    #grand_canonical_analyze(num_atoms, 'free')
 

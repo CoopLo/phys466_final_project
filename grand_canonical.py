@@ -55,7 +55,7 @@ def de_broglie(mass, beta):
 
 
 def get_mu(mass, beta, volume, num_atoms):
-    return 1./beta * np.log(de_broglie(mass, beta)**3) * num_atoms/volume
+    return 1./beta * np.log(de_broglie(mass, beta)**3 * num_atoms/volume)
 
 
 if __name__ == '__main__':
@@ -63,15 +63,15 @@ if __name__ == '__main__':
     # Initial conditions in reduced units
     betas = np.array([50, 10, 5., 4., 3., 2., 1., 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, .25, 0.1, 
                       0.08, 0.05, 0.03, 0.01, 0.008, 0.005])
-    betas = np.array([0.1])
+    betas = np.array([1/(1.38*10**(-23) * 50)])
+    #betas = np.array([1.0])
 
     mass = 6.6465 * 10**(-27)  # Heluim
-    length = 10*10**(-9)
-    volume = (length)**(3)  # Because it just feels right
+    density = 1/200  # particles / nm^3 for 50 particles
     lim = 10                                # allowed k states
     nsweep = 1000
     #n_atoms = [5, 10, 50, 100, 200, 500]
-    n_atoms = [1000]
+    n_atoms = [100]
 
     energy_model='free' #'free', 'harmonic' defaults to free particle
     lat_dat = 'lat.dat'
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         for j in range(lim):
             for k in range(lim):
                 if energy_model =='free':
-                    energy_table[i,j,k] = (1.054*10**(-34))**2 * np.pi**2/(2*mass*(length**2))* \
+                    energy_table[i,j,k] = (1.054*10**(-34))**2 * np.pi**2/(2*mass) * \
                                           ((i+1)**2 + (j+1)**2 + (k+1)**2)
 
                 elif energy_model =='harmonic':
@@ -101,12 +101,18 @@ if __name__ == '__main__':
 
     for num_atoms in n_atoms:
         init_num_atoms = num_atoms
+
+        # Size, this time particle density is conserved
+        volume = (num_atoms/density)  # Because it just feels right
+        length = volume**(1/3)
+
         for beta in betas:
 
             # Yeet
             en = []
             occ_num = []
             atom_trace = []
+            l_trace = []
 
             # Initialize the lattice at specified temperature
             lattice, num_atoms = initialize_lattice(lim, init_num_atoms)
@@ -189,8 +195,8 @@ if __name__ == '__main__':
                         neighbor = random.choice(neighbors)
 
                         # Calculate energy difference
-                        energy_diff = energy_table[neighbor[0]][neighbor[1]][neighbor[2]] - \
-                                      energy_table[site[0]][site[1]][site[2]]
+                        energy_diff = (energy_table[neighbor[0]][neighbor[1]][neighbor[2]] - \
+                                      energy_table[site[0]][site[1]][site[2]])/(length**2)
 
                         # Get transition probability
                         old_oc = lattice[site[0]][site[1]][site[2]]
@@ -215,7 +221,7 @@ if __name__ == '__main__':
 
                             # select site to insert, (random, then calculates energy)
                             site = np.random.randint(0, lim, (1,3))[0]
-                            energy_diff = energy_table[site[0]][site[1]][site[2]]
+                            energy_diff = energy_table[site[0]][site[1]][site[2]]/(length**2)
 
                             # compute probability
                             #print(volume/de_broglie(mass, beta)**3 * (num_atoms+1))
@@ -224,6 +230,8 @@ if __name__ == '__main__':
                             prob = volume/(de_broglie(mass, beta)**3 * (num_atoms+1)) * \
                                    np.exp(beta * (get_mu(mass, beta, volume, num_atoms) + \
                                                   energy_diff))
+                            #print(np.exp(beta*(get_mu(mass,beta,volume,num_atoms)+energy_diff)))
+                            #print(beta, get_mu(mass, beta, volume, num_atoms), energy_diff)
                             #print("Insertion probability: {}".format(prob))
 
                             # insert or not
@@ -232,40 +240,49 @@ if __name__ == '__main__':
                                 #print("INSERTED")
                                 num_atoms = np.sum(lattice)
 
+                                # Update length from particle density
+                                length = (num_atoms/density)**(1/3)
+                                volume = num_atoms/density
+
                         else: # delete particle
 
                             # select site to delete, (random)
                             # Index of non zero occupancies, need to weight by particle number
-                            truth = lattice>=1
-                            choices = indexes[np.where(truth)]
-                            choice = np.ceil(num_atoms*np.random.random())
+                            print("num_atoms/density: {}".format(num_atoms/density))
+                            if(np.random.random() < num_atoms/density):
+                                truth = lattice>=1
+                                choices = indexes[np.where(truth)]
+                                choice = np.ceil(num_atoms*np.random.random())
 
-                            particles = 0
-                            for c in choices:
-                                particles += lattice[c[0]][c[1]][c[2]]
-                                if(choice <= particles):
-                                    site = c
-                                    break
+                                particles = 0
+                                for c in choices:
+                                    particles += lattice[c[0]][c[1]][c[2]]
+                                    if(choice <= particles):
+                                        site = c
+                                        break
 
-                            energy_diff = -energy_table[site[0]][site[1]][site[2]]
+                                energy_diff =-energy_table[site[0]][site[1]][site[2]]/(length**2)
 
-                            # compute probability
-                            #print(de_broglie(mass, beta)**3 * num_atoms/volume)
-                            #print(np.exp(-beta * (get_mu(mass, beta, volume, num_atoms) + 
-                            #                      energy_diff)))
-                            prob = de_broglie(mass, beta)**3 * num_atoms/volume * \
-                                   np.exp(-beta * (get_mu(mass, beta, volume, num_atoms) - \
-                                                  energy_diff))
-                            #print(prob)
-                            #print("Deletion probability: {}".format(prob))
+                                # compute probability
+                                #print(de_broglie(mass, beta)**3 * num_atoms/volume)
+                                #print(np.exp(-beta * (get_mu(mass, beta, volume, num_atoms) + 
+                                #                      energy_diff)))
+                                prob = de_broglie(mass, beta)**3 * num_atoms/volume * \
+                                       np.exp(-beta * (get_mu(mass, beta, volume, num_atoms) - \
+                                                      energy_diff))
+                                #print(prob)
+                                #print("DELETION PROBABILITY: {}".format(prob))
+                                # insert or not
+                                if(prob > np.random.random()):
+                                    lattice[site[0]][site[1]][site[2]] -= 1
+                                    num_atoms = np.sum(lattice)
 
-                            #print("DELETION PROBABILITY: {}".format(prob))
-                            # insert or not
-                            if(prob > np.random.random()):
-                                #print("DELETED")
-                                lattice[site[0]][site[1]][site[2]] -= 1
-                                num_atoms = np.sum(lattice)
+                                    # Update length from particle density
+                                    length = (num_atoms/density)**(1/3)
+                                    volume = num_atoms/density
 
+
+                l_trace.append(length)
                 occ_num.append(lattice[0][0][0]/num_atoms)
                 en.append(np.sum(lattice * energy_table))
                 atom_trace.append(num_atoms)
@@ -310,8 +327,9 @@ if __name__ == '__main__':
             av_occ.append(np.average(occ_num[int(nsweep/2):]))
             av_en.append(np.average(en[int(nsweep/2):]))
 
-            fig, ax = plt.subplots()
-            ax.plot(atom_trace)
+            fig, ax = plt.subplots(2)
+            ax[0].plot(atom_trace)
+            ax[1].plot(l_trace)
             plt.show()
             exit(1)
     
